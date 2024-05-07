@@ -115,7 +115,7 @@ def find_ecc_range(match, chirp, interps, slope='increasing', max_ecc=0.2):
 
     return min_ecc, max_ecc
 
-def find_ecc_range_samples(matches, chirp, interps, slope='increasing', max_ecc=0.2):
+def find_ecc_range_samples(matches, chirp, interps, max_ecc=0.2):
     """
     Find range of eccentricities corresponding to match values of samples. Assumes
     slope is increasing.
