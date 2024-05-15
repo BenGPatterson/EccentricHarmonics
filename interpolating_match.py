@@ -17,7 +17,7 @@ def find_min_max(data):
     for chirp in data.keys():
 
         # Loop over h0, h1, h1/h0
-        for key in ['h1', 'h2', 'h2_h1']:
+        for key in ['h0', 'h1', 'h1_h0']:
             
             # Find min/max vals and add to grid
             data[chirp][f'{key}_max'] = np.max(np.array(data[chirp][key]), axis=1)
@@ -46,7 +46,7 @@ def create_2D_interps(data, param_vals=np.linspace(0, 0.2, 101)):
         param_vals = data[first_chirp]['e_vals']
     
     # Loop over h0, h1, h1/h0:
-    for key in ['h1', 'h2', 'h2_h1']:
+    for key in ['h0', 'h1', 'h1_h0']:
 
         max_vals = []
         min_vals = []
@@ -70,13 +70,13 @@ def create_2D_interps(data, param_vals=np.linspace(0, 0.2, 101)):
 
     return interp_objs
 
-def find_ecc_range(match, chirp, interps, slope='increasing', max_ecc=0.2):
+def find_ecc_range(match, chirp, interps, slope='increasing', max_ecc=0.4):
     """
     Find range of eccentricities corresponding to match value.
 
     Parameters:
         match: Match value.
-        chirp: Chirp mass at e_10=0.1.
+        chirp: Eccentric chirp mass of degeneracy line.
         interps: Interpolation objects to use.
         slope: Slope direction of match against ecc along degeneracy line.
         max_ecc: Maximum value of eccentricity used to create interpolation objects.
@@ -115,14 +115,14 @@ def find_ecc_range(match, chirp, interps, slope='increasing', max_ecc=0.2):
 
     return min_ecc, max_ecc
 
-def find_ecc_range_samples(matches, chirp, interps, max_ecc=0.2):
+def find_ecc_range_samples(matches, chirp, interps, max_ecc=0.4):
     """
     Find range of eccentricities corresponding to match values of samples. Assumes
     slope is increasing.
 
     Parameters:
         matches: Match values.
-        chirp: Chirp mass at e_10=0.1.
+        chirp: Eccentric chirp mass of degeneracy line.
         interps: Interpolation objects to use.
         max_ecc: Maximum value of eccentricity used to create interpolation objects.
 
