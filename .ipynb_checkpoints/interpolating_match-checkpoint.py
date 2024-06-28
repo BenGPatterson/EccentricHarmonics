@@ -17,11 +17,12 @@ def find_min_max(data):
     for chirp in data.keys():
 
         # Loop over h0, h1, h1/h0
-        for key in ['h0', 'h1', 'h1_h0']:
+        for key in list(data[chirp].keys()):
             
             # Find min/max vals and add to grid
-            data[chirp][f'{key}_max'] = np.max(np.array(data[chirp][key]), axis=1)
-            data[chirp][f'{key}_min'] = np.min(np.array(data[chirp][key]), axis=1)
+            if key[0] == 'h' or key=='quad':
+                data[chirp][f'{key}_max'] = np.max(np.array(data[chirp][key]), axis=1)
+                data[chirp][f'{key}_min'] = np.min(np.array(data[chirp][key]), axis=1)
 
     return data
 
