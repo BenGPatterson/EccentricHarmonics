@@ -1,0 +1,6 @@
+lal.MSUN_SI != Msun
+__name__ = gwsurrogate.new.spline_evaluation
+__package__= gwsurrogate.new
+Chirp mass 10.06652832, eccentricities [0.03519393, 0.07300364, 0.11175819]: Completed in 12339.984176635742 seconds.
+Chirp mass 24.16193848, eccentricities [0.03519393, 0.07300364, 0.11175819]: Completed in 2713.150798559189 seconds.
+Chirp mass 40.27667236, eccentricities [0.03519393, 0.07300364, 0.11175819]: Completed in 1186.5151183605194 seconds.
