@@ -1179,8 +1179,8 @@ def gen_component_wfs(f_low, e, M, q, n, sample_rate, approximant, normalisation
 
 def get_dominance_order(n):
     '''
-    Creates indexing array to order h1, ..., hn waveforms from their natural roots of unity order 
-    to their order of dominance.
+    Creates indexing array to order waveforms from their natural roots of unity order 
+    to their order of dominance: h0, h1, h-1, h2, h3, h4, ...
     
     Parameters:
         n: Number of waveform components.
@@ -1189,17 +1189,13 @@ def get_dominance_order(n):
         Indexing array.
     '''
 
-    # Always start with j=0
-    j_order = [0]
+    # Start with roots of unity ordering
+    j_order = list(np.arange(n))
 
-    # Add increasing pairs of j and n-j
-    for i in range(1, int((n+1)/2)):
-        j_order.append(i)
-        j_order.append(n-i)
-
-    # Add n/2 if n is even
-    if n%2 == 0:
-        j_order.append(int(n/2))
+    # Move -1 harmonic if required
+    if n>= 4:
+        j_order.insert(2, j_order[-1])
+        j_order = j_order[:-1]
 
     return j_order
 
