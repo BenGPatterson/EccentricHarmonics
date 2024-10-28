@@ -207,7 +207,7 @@ def modes_to_k(modes):
     
     return [int(x[0]*(x[0]-1)/2 + x[1]-2) for x in modes]
 
-def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_type):
+def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_type, mode_list):
     """
     Generates TEOBResumS waveform with chosen parameters.
 
@@ -222,6 +222,7 @@ def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_
         TA: Initial true anomaly.
         inclination: Inclination.
         freq_type: How the frequency has been specified.
+        mode_list: Modes to include.
 
     Returns:
         Plus and cross polarisation of TEOBResumS waveform.
@@ -238,12 +239,12 @@ def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_
         raise Exception('freq_type not recognised')
 
     # Define parameters
-    k = modes_to_k([[2,2]])
+    k = modes_to_k(mode_list)
     pars = {
             'M'                  : M,
             'q'                  : q,    
-            'chi1'               : 0.,
-            'chi2'               : 0.,
+            'chi1'               : 0,
+            'chi2'               : 0,
             'domain'             : 0,            # TD
             'arg_out'            : 'no',         # Output hlm/hflm. Default = 0
             'use_mode_lm'        : k,            # List of modes to use/output through EOBRunPy
@@ -271,7 +272,7 @@ def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_
     
     return teob_p, teob_c
 
-def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.pi, inclination=0, freq_type='average'):
+def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.pi, inclination=0, freq_type='average', mode_list=[[2,2]]):
     """
     Generates waveform with chosen parameters.
 
@@ -287,6 +288,7 @@ def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.
         TA: Initial true anomaly (TEOBResumS only).
         inclination: Inclination (TEOBResumS only).
         freq_type: How the frequency has been specified (TEOBResumS only).
+        mode_list: Modes to include (TEOBResumS only).
 
     Returns:
         Complex combination of plus and cross waveform polarisations.
@@ -296,7 +298,7 @@ def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.
     if approximant=='EccentricTD':
         hp, hc = gen_e_td_wf(f_low, e, M, q, sample_rate, phase, distance)
     elif approximant=='TEOBResumS':
-        hp, hc = gen_teob_wf(f_low, e, M, q, sample_rate, phase, distance, TA, inclination, freq_type)
+        hp, hc = gen_teob_wf(f_low, e, M, q, sample_rate, phase, distance, TA, inclination, freq_type, mode_list)
     else:
         raise Exception('approximant not recognised')
 
@@ -406,7 +408,7 @@ def delta_freq_orbit(P, e, M, q):
 
 def shifted_f(f, e, M, q):
     """
-    Calculates how to shift frequency such that true anomaly changes by 2pi.
+    Calculates how to shift frequency such that anomaly changes by 2pi.
 
     Parameters:
         f: Original starting frequency.
@@ -427,7 +429,7 @@ def shifted_f(f, e, M, q):
 def shifted_e_approx(s_f, f, e):
     """
     Calculates how to shift eccentricity to match shifted frequency in such a way that the
-    original frequency and eccentricity are recovered after one true anomaly cycle of 2pi.
+    original frequency and eccentricity are recovered after one anomaly cycle of 2pi.
     Taylor expansion to lowest order in e.
 
     Parameters:
@@ -461,7 +463,7 @@ def shifted_e_const(f, e):
 def shifted_e(s_f, f, e):
     """
     Calculates how to shift eccentricity to match shifted frequency in such a way that the
-    original frequency and eccentricity are recovered after one true anomaly cycle of 2pi.
+    original frequency and eccentricity are recovered after one anomaly cycle of 2pi.
 
     Parameters:
         s_f: Shifted starting frequency.
@@ -588,21 +590,21 @@ def prepend_zeros(wf_pre, wf_ref):
 
 def match_hn(wf_hjs_, wf_s, f_low, f_match=20, return_index=False, psd=None):
     """
-    Calculates match between fiducial h1 waveform and a trial waveform, and uses the time shift 
-    in this match to compute the complex overlaps between the time-shifted fiducial h2,...,hn waveforms
-    and a trial waveform. This ensures the 'match' is calculated for h1 and h2,...,hn at the same 
+    Calculates match between dominant waveform and a trial waveform, and uses the time shift 
+    in this match to compute the complex overlaps between the time-shifted sub-dominant waveforms
+    and the trial waveform. This ensures the 'match' is calculated for all harmonics at the same 
     time.
 
     Parameters:
-        wf_hjs_: List of fiducial h1,...,hn waveforms.
+        wf_hjs_: List of harmonic waveforms.
         wf_s: Trial waveform.
         f_low: Starting frequency of waveforms.
         f_match: Low frequency cutoff to use. 
-        return_index: Whether to return index shift of h1 match.
+        return_index: Whether to return index shift of dominant harmonic match.
         psd: psd to use.
         
     Returns:
-        Complex matches of trial waveform to h1,...,hn.
+        Complex matches of trial waveform to harmonics.
     """
 
     # Creates new versions of waveforms to avoid editing originals
@@ -626,39 +628,39 @@ def match_hn(wf_hjs_, wf_s, f_low, f_match=20, return_index=False, psd=None):
     wf_s = all_wfs[-1]
     wf_len = len(wf_s)
 
-    # Perform match on h1
+    # Perform match on dominant
     m_h1_amp, m_index, m_h1_phase = match(wf_hjs[0].real(), wf_s.real(), psd=psd, low_frequency_cutoff=f_match, subsample_interpolation=True, return_phase=True)
     m_h1 = m_h1_amp*np.e**(1j*m_h1_phase)
 
-    # Shift fiducial h2,...,hn
+    # Shift sub-dominant
     if m_index <= len(wf_hjs[0])/2:
-        # If fiducial h2,...,hn needs to be shifted forward, prepend zeros to it
+        # If sub-dominant needs to be shifted forward, prepend zeros to it
         for i in range(1,len(wf_hjs)):
             wf_hjs[i].prepend_zeros(int(m_index))
             wf_hjs[i].resize(wf_len)
     else:
-        # If fiducial h2,...,hn needs to be shifted backward, prepend zeros to trial waveform instead
+        # If sub-dominant needs to be shifted backward, prepend zeros to trial waveform instead
         wf_s.prepend_zeros(int(len(wf_hjs[0]) - m_index))
         wf_s.resize(wf_len)
 
-    # As subsample_interpolation=True, require interpolation of h2,...,hn to account for non-integer index shift
+    # As subsample_interpolation=True, require interpolation of sub-dominant to account for non-integer index shift
     delta_t = wf_hjs[0].delta_t
     if m_index <= len(wf_hjs[0])/2:
-        # If fiducial h2 needs to be shifted forward, interpolate h2,...,hn waveform forward
+        # If sub-dominant needs to be shifted forward, interpolate sub-dominant forward
         inter_index = m_index - int(m_index)
         for i in range(1,len(wf_hjs)):
             wf_hj_interpolate = interp1d(wf_hjs[i].sample_times, wf_hjs[i], bounds_error=False, fill_value=0)
             wf_hj_strain = wf_hj_interpolate(wf_hjs[i].sample_times-(inter_index*delta_t))
             wf_hjs[i] = timeseries.TimeSeries(wf_hj_strain, wf_hjs[i].delta_t, epoch=wf_hjs[i].start_time-(inter_index*delta_t))
     else:
-        # If fiducial h2 needs to be shifted backward, interpolate h2,...,hn waveform backward
+        # If sub-dominant needs to be shifted backward, interpolate sub-dominant backward
         inter_index = (len(wf_hjs[0]) - m_index) - int(len(wf_hjs[0]) - m_index)
         for i in range(1,len(wf_hjs)):
             wf_hj_interpolate = interp1d(wf_hjs[i].sample_times, wf_hjs[i], bounds_error=False, fill_value=0)
             wf_hj_strain = wf_hj_interpolate(wf_hjs[i].sample_times+(inter_index*delta_t))
             wf_hjs[i] = timeseries.TimeSeries(wf_hj_strain, wf_hjs[i].delta_t, epoch=wf_hjs[i].start_time+(inter_index*delta_t))
 
-    # Perform complex overlap on h2,...,hn
+    # Perform complex overlap on sub-dominant
     matches = [m_h1]
     for i in range(1,len(wf_hjs)):
         m = overlap_cplx(wf_hjs[i].real(), wf_s.real(), psd=psd, low_frequency_cutoff=f_match)
@@ -672,10 +674,10 @@ def match_hn(wf_hjs_, wf_s, f_low, f_match=20, return_index=False, psd=None):
 
 def match_h1_h2(wf_h1, wf_h2, wf_s, f_low, f_match=20, return_index=False):
     """
-    Calculates match between fiducial h1 waveform and a trial waveform, and uses the time shift 
-    in this match to compute the complex overlap between the time-shifted fiducial h2 waveform 
-    and a trial waveform. This ensures the 'match' is calculated for both h1 and h2 at the same 
-    time.
+    Calculates match between dominant waveform and a trial waveform, and uses the time shift 
+    in this match to compute the complex overlap between the time-shifted sub-leading waveform 
+    and a trial waveform. This ensures the 'match' is calculated for both harmonics at the same 
+    time. This has been superseded by match_hn().
 
     Parameters:
         wf_h1: Fiducial h1 waveform.
@@ -792,285 +794,6 @@ def minimise_match(s_f, f_low, e, M, q, h_fid, sample_rate, approximant, subsamp
 
     return m
 
-## Maximising over shifted frequency
-
-def sine_model_coeffs(m_0, m_1, m_2):
-    """
-    Calculates coefficients A, B, C in equation m(x) = A*sin(x+B)+C given the value of 
-    m(0), m(-pi/2) and m(-pi).
-
-    Parameters:
-        m_0: Value of m(0).
-        m_1: Value of m(-pi/2).
-        m_2: Value of m(-pi).
-    
-    Returns:
-        Coefficients A, B, C.
-    """
-
-    # Ensure amplitude of match is given
-    m_0, m_1, m_2 = abs(m_0), abs(m_1), abs(m_2)
-
-    # Calculate C
-    C = (m_0 + m_2)/2
-    
-    # Calculate A
-    A = np.sqrt((m_0 - C)**2 + (m_1 - C)**2)
-
-    # Calculate B
-    B = np.arctan2(m_0 - C, -(m_1 - C))
-
-    return A, B, C
-
-def sine_model(x, A, B, C):
-    """
-    Calculates sinusoid modelled as m(x) = A*sin(x+B)+C at a given value of x.
-
-    Parameters:
-        x: Value at which to evaluate m(x).
-        A_1: Amplitude of sinusoid.
-        B_1: Phase offset of sinusoid.
-        C_1: Offset of sinusoid.
-        
-    Returns:
-        Value of m(x) at given value of x.
-    """
-    
-    m = A*np.sin(x+B)+C
-
-    return m
-
-def quad_sine_model(x, A_1, B_1, C_1, A_2, B_2, C_2):
-    """
-    Calculates quadrature sum of two sinusoids modelled as m_quad(x) = sqrt(m_1^2(x) + m_2^2(x)) 
-    where m_n(x) = A_n*sin(x+B_n)+C_n for n=1,2 at a given value of x.
-
-    Parameters:
-        x: Value at which to evaluate m_n(x).
-        A_1: Amplitude of first sinusoid.
-        B_1: Phase offset of first sinusoid.
-        C_1: Offset of first sinusoid.
-        A_2: Amplitude of second sinusoid.
-        B_2: Phase offset of second sinusoid.
-        C_2: Offset of second sinusoid.
-        
-    Returns:
-        Value of m_quad(x) at given value of x.
-    """
-    
-    # Calculates m_n functions for this value of x
-    m_1 = sine_model(x, A_1, B_1, C_1)
-    m_2 = sine_model(x, A_2, B_2, C_2)
-
-    # Calculates quadrature sum for this value of x
-    m_quad = np.sqrt(m_1**2 + m_2**2)
-
-    return m_quad
-
-def maximise_quad_sine(A_1, B_1, C_1, A_2, B_2, C_2):
-    """
-    Maximises quadrature sum of two sinusoids modelled as m_quad(x) = sqrt(m_1^2(x) + m_2^2(x)) 
-    where m_n(x) = A_n*sin(x+B_n)+C_n for n=1,2.
-
-    Parameters:
-        A_1: Amplitude of first sinusoid.
-        B_1: Phase offset of first sinusoid.
-        C_1: Offset of first sinusoid.
-        A_2: Amplitude of second sinusoid.
-        B_2: Phase offset of second sinusoid.
-        C_2: Offset of second sinusoid.
-        
-    Returns:
-        Value of x which maximises m_quad(x).
-    """
-
-    # Use location of peak of first sinusoid for initial guess
-    init_guess = np.pi/2 - B_1
-    if init_guess > 0:
-        init_guess -= 2*np.pi
-
-    # Set bounds and arguments of function
-    args = (A_1, B_1, C_1, A_2, B_2, C_2)
-    bounds = [(-2*np.pi, 0)]
-
-    # Perform maximisation
-    max_result = minimize(lambda x: -quad_sine_model(x, *args), init_guess, bounds=bounds)
-    max_location = max_result['x']
-
-    return max_location
-
-def s_f_max_sine_approx(wf_h1, wf_h2, f_low, e, M, q, sample_rate, approximant, return_coeffs=False):
-    """
-    Calculates match between fiducial h1, h2 waveforms and a trial waveform, maximised 
-    over true anomaly/shifted frequency by approximating the matches of h1/h2 against 
-    as sinusoidal curves.
-
-    Parameters:
-        wf_h1: Fiducial h1 waveform.
-        wf_h2: Fiducial h2 waveform.
-        f_low: Starting frequency of waveforms.
-        e: Eccentricity of trial waveform.
-        M: Total mass of trial waveform.
-        q: Mass ratio of trial waveform.
-        sample_rate: Sample rate of trial waveform.
-        approximant: Approximant of trial waveform.
-        return_coeffs: whether to return calculated coefficients of sine models.
-        
-    Returns:
-        Complex matches to h1,h2 maximised to quad match peak.
-    """
-    
-    # Converts necessary phase shifts to shifted frequency and eccentricity
-    phase_shifts = np.array([0, -np.pi/2, -np.pi])
-    s_f_range = f_low - shifted_f(f_low, e, M, q)
-    s_f_vals = f_low + (phase_shifts/(2*np.pi))*s_f_range
-    s_e_vals = shifted_e(s_f_vals, f_low, e)
-
-    # Calculates matches to h1, h2 at each phase shift
-    m1_vals, m2_vals = np.empty(3, dtype=np.complex128), np.empty(3, dtype=np.complex128)
-    for i, (s_f, s_e) in enumerate(zip(s_f_vals, s_e_vals)):
-        wf_s = gen_wf(s_f, s_e, M, q, sample_rate, approximant)
-        m1_vals[i], m2_vals[i] = match_h1_h2(wf_h1, wf_h2, wf_s, f_low)
-    
-    # Calculates both sets of sine model coefficients
-    coeffs_h1 = sine_model_coeffs(*m1_vals)
-    coeffs_h2 = sine_model_coeffs(*m2_vals)
-
-    # Find location of quad match peak in terms of required phase shift
-    phase_shift_quad_max = maximise_quad_sine(*coeffs_h1, *coeffs_h2)
-
-    # Perform final match to h1, h2 at this phase shift
-    s_f_quad_max = f_low + (phase_shift_quad_max/(2*np.pi))*s_f_range
-    s_e_quad_max = shifted_e(s_f_quad_max, f_low, e)
-    wf_quad_max = gen_wf(s_f_quad_max, s_e_quad_max, M, q, sample_rate, approximant)
-    matches = match_h1_h2(wf_h1, wf_h2, wf_quad_max, f_low)
-
-    # Additionally returns coefficients if requested
-    if return_coeffs:
-        return matches, list(coeffs_h1) + list(coeffs_h2)
-    else:
-        return matches
-
-def s_f_max_phase_diff(wf_h1, wf_h2, f_low, e, M, q, sample_rate, approximant):
-    """
-    Calculates match between fiducial h1, h2 waveforms and a trial waveform, maximised 
-    over true anomaly/shifted frequency using the difference between the phase of matches 
-    to the h1,h2 waveforms when the trial waveform starts at f=f_low.
-
-    Parameters:
-        wf_h1: Fiducial h1 waveform.
-        wf_h2: Fiducial h2 waveform.
-        f_low: Starting frequency of waveforms.
-        e: Eccentricity of trial waveform.
-        M: Total mass of trial waveform.
-        q: Mass ratio of trial waveform.
-        sample_rate: Sample rate of trial waveform.
-        approximant: Approximant of trial waveform.
-        
-    Returns:
-        Complex matches to h1,h2 maximised to quad match peak.
-    """
-
-    # Calculates matches to h1, h2 at f_low
-    wf_f_low = gen_wf(f_low, e, M, q, sample_rate, approximant)
-    m1_f_low, m2_f_low = match_h1_h2(wf_h1, wf_h2, wf_f_low, f_low)
-
-    # Gets phase difference
-    phase_diff = np.angle(m2_f_low) - np.angle(m1_f_low)
-    if phase_diff > 0:
-        phase_diff -= 2*np.pi
-
-    # Converts phase difference to shifted frequency and eccentricity
-    s_f_range = f_low - shifted_f(f_low, e, M, q)
-    s_f = f_low + (phase_diff/(2*np.pi))*s_f_range
-    s_e = shifted_e(s_f, f_low, e)
-
-    # Calculates matches to h1, h2 at shifted frequency
-    wf_s_f = gen_wf(s_f, s_e, M, q, sample_rate, approximant)
-    matches =  match_h1_h2(wf_h1, wf_h2, wf_s_f, f_low)
-
-    return matches
-    
-
-def match_s_f_max(wf_h1, wf_h2, f_low, e, M, q, sample_rate, approximant, max_method):
-    """
-    Calculates match between fiducial h1, h2 waveforms and a trial waveform, maximised 
-    over true anomaly/shifted frequency using the specified method.
-
-    Parameters:
-        wf_h1: Fiducial h1 waveform.
-        wf_h2: Fiducial h2 waveform.
-        f_low: Starting frequency of waveforms.
-        e: Eccentricity of trial waveform.
-        M: Total mass of trial waveform.
-        q: Mass ratio of trial waveform.
-        sample_rate: Sample rate of trial waveform.
-        approximant: Approximant of trial waveform.
-        max_method: Which method to use to maximise over shifted frequency, either 'sine_approx' or 'phase_diff'.
-        
-    Returns:
-        Complex matches to h1,h2 maximised to quad match peak.
-    """
-
-    # Calculates matches maximised over shifted frequency using specified method
-    if max_method == 'sine_approx':
-        matches = s_f_max_sine_approx(wf_h1, wf_h2, f_low, e, M, q, sample_rate, approximant)
-    elif max_method == 'phase_diff':
-        matches = s_f_max_phase_diff(wf_h1, wf_h2, f_low, e, M, q, sample_rate, approximant)
-    else:
-        raise Exception('max_method not recognised')
-
-    # Returns matches
-    return matches
-
-def match_true_anomaly(wf_h, n, f_low, e, M, q, sample_rate, approximant, final_match):
-    """
-    Calculates match between two waveforms, maximised over shifted frequency 
-    by calculating the true anomaly using matches to h1,...,hn waveforms.
-
-    Parameters:
-        wf_h: Fiducial waveform.
-        n: Number of waveform components to use.
-        f_low: Starting frequency of waveforms.
-        e: Eccentricity of trial waveform.
-        M: Total mass of trial waveform.
-        q: Mass ratio of trial waveform.
-        sample_rate: Sample rate of trial waveform.
-        approximant: Approximant of trial waveform.
-        final_match: Whether to perform final match to TEOBResumS waveform or h1,...,hn quad match.
-        
-    Returns:
-        Complex match between waveforms maximised over shifted frequency/true anomaly.
-    """
-
-    # Calculates matches to h1,...,hn at f_low
-    all_wfs = list(get_h([1]*n, f_low, e, M, q, sample_rate, approximant=approximant))
-    matches = match_hn(all_wfs[1:n+1], wf_h, f_low)
-
-    # Gets phase difference
-    phase_diff = np.angle(matches[0]) - np.angle(matches[1])
-    if phase_diff > 0:
-        phase_diff -= 2*np.pi
-
-    # Converts phase difference to shifted frequency and eccentricity
-    s_f_range = f_low - shifted_f(f_low, e, M, q)
-    s_f = f_low + (phase_diff/(2*np.pi))*s_f_range
-    s_e = shifted_e(s_f, f_low, e)
-
-    # Calculates match(es) to final_match at shifted frequency
-    if final_match == 'TEOB':
-        wf_s_f = gen_wf(s_f, s_e, M, q, sample_rate, approximant)
-        m_amp, m_phase =  match_wfs(wf_s_f, wf_h, f_low, True, return_phase=True)
-        match = m_amp*np.e**(1j*m_phase)
-    elif final_match == 'quad':
-        all_s_f_wfs = list(get_h([1]*n, s_f, s_e, M, q, sample_rate, approximant=approximant))
-        match = match_hn(all_s_f_wfs[1:n+1], wf_h, f_low)
-    else:
-        raise Exception('final_match not recognised')
-
-    # Returns match(es)
-    return match
-
 ## Waveform components
 
 def taper_wf(wf_taper):
@@ -1090,7 +813,7 @@ def taper_wf(wf_taper):
 
     return wf_taper
 
-def get_comp_shifts(f_low, e, M, q, n, sample_rate, approximant):
+def get_comp_shifts(f_low, e, M, q, n):
     '''
     Calculates shifted frequency and eccentricity required to create each component
     waveform (beyond first).
@@ -1101,8 +824,6 @@ def get_comp_shifts(f_low, e, M, q, n, sample_rate, approximant):
         M: Total mass.
         q: Mass ratio.
         n: Number of waveform components.
-        sample_rate: Sample rate of waveform.
-        approximant: Approximant to use.
 
     Returns:
         Shifted frequency and eccentricity for all components beyond first.
@@ -1117,8 +838,8 @@ def get_comp_shifts(f_low, e, M, q, n, sample_rate, approximant):
 
 def gen_component_wfs(f_low, e, M, q, n, sample_rate, approximant, normalisation, phase, f_match):
     '''
-    Creates n component waveforms used to make h_1,...,h_n, all equally spaced in
-    true anomaly.
+    Creates n component waveforms used to make harmonics, all equally spaced in
+    mean anomaly at a fixed time before merger.
     
     Parameters:
         f_low: Starting frequency.
@@ -1128,8 +849,8 @@ def gen_component_wfs(f_low, e, M, q, n, sample_rate, approximant, normalisation
         n: Number of waveform components.
         sample_rate: Sample rate of waveform.
         approximant: Approximant to use.
-        normalisation: Whether to normalise s_1,...,s_n components to ensure (sj|sj) is constant.
-        phase: Initial phase of s_1,...,s_n components.
+        normalisation: Whether to normalise x_0,...,x_n-1 components to ensure (x_j|x_j) is constant.
+        phase: Initial phase of x_0,...,x_n-1 components.
         f_match: Low frequency cutoff to use.
         
     Returns:
@@ -1138,7 +859,7 @@ def gen_component_wfs(f_low, e, M, q, n, sample_rate, approximant, normalisation
 
     # Generates first (unshifted) component waveform and shifts required for others
     h = gen_wf(f_low, e, M, q, sample_rate, approximant, phase=phase)
-    s_f_vals, s_e_vals = get_comp_shifts(f_low, e, M, q, n, sample_rate, approximant)
+    s_f_vals, s_e_vals = get_comp_shifts(f_low, e, M, q, n)
 
     # Tapers first waveform
     h = taper_wf(h)
@@ -1212,7 +933,7 @@ def GS_proj(u, v, f_low, f_match, psd):
         psd: Psd to use to weight complex overlap.
         
     Returns:
-        Grant-Schmidt orthogonalised h1,...,hn.
+        Projection u*(v|u)/(u|u).
     '''
 
     numerator = overlap_cplx(v.real(), u.real(), psd=psd, low_frequency_cutoff=f_match, normalized=False)
@@ -1222,16 +943,16 @@ def GS_proj(u, v, f_low, f_match, psd):
 
 def GS_orthogonalise(f_low, f_match, wfs):
     '''
-    Performs Grant-Schmidt orthogonalisation on waveforms h1,...,hn to ensure 
+    Performs Grant-Schmidt orthogonalisation on harmonic waveforms to ensure 
     (hj|hm) = 0 for j!=m.
     
     Parameters:
         f_low: Starting frequency.
         f_match: Low frequency cutoff to use.
-        wfs: Waveforms h1,...,hn.
+        wfs: Harmonic waveforms.
         
     Returns:
-        Grant-Schmidt orthogonalised h1,...,hn.
+        Grant-Schmidt orthogonalised harmonics.
     '''
 
     # Generates psd for use in orthogonalisation
@@ -1291,24 +1012,24 @@ def get_ortho_ovlps(h_wfs, f_low, f_match=20):
 
 def get_h_TD(f_low, coeffs, comp_wfs, GS_normalisation, f_match, return_ovlps=False):
     """
-    Combines waveform components in time domain to form h1, ..., hn and h as follows:
+    Combines waveform components in time domain to form harmonics and total h as follows:
 
     Parameters:
         f_low: Starting frequency.
-        coeffs: List containing coefficients of h_1, ..., h_n.
-        comp_wfs: Waveform components s_1, ..., s_n.
+        coeffs: List containing coefficients of harmonics.
+        comp_wfs: Waveform components x_0, ..., x_n-1.
         GS_normalisation: Whether to perform Grant-Schmidt orthogonalisaton to ensure (hj|hm) = 0 for j!=m.
         f_match: Low frequency cutoff to use.
         return_ovlps: Whether to return overlaps between all unorthogonalised harmonics.
         
     Returns:
-        All waveform components and combinations: h, h1, ..., h_n, s_1, ..., s_n
+        All waveform components and combinations: total, *harmonics, *components
     """
 
     # Find first primitive root of unity
     prim_root = np.e**(2j*np.pi/len(coeffs))
     
-    # Build h1, ..., hn
+    # Build harmonics
     hs = []
     for i in range(len(coeffs)):
         hs.append((1/len(coeffs))*comp_wfs[0])
@@ -1338,10 +1059,10 @@ def get_h_TD(f_low, coeffs, comp_wfs, GS_normalisation, f_match, return_ovlps=Fa
 
 def get_h(coeffs, f_low, e, M, q, sample_rate, approximant='TEOBResumS', f_match=20, subsample_interpolation=True, GS_normalisation=True, comp_normalisation=False, comp_phase=0, return_ovlps=False):
     """
-    Generates a overall h waveform, h_1,...h_n, and s_1,...,s_n.
+    Generates a overall h waveform, harmonic waveforms, and component waveforms.
 
     Parameters:
-        coeffs: List containing coefficients of h_1,...,h_n.
+        coeffs: List containing coefficients of harmonics.
         f_low: Starting frequency.
         e: Eccentricity.
         M: Total mass.
@@ -1351,12 +1072,12 @@ def get_h(coeffs, f_low, e, M, q, sample_rate, approximant='TEOBResumS', f_match
         f_match: Low frequency cutoff to use.
         subsample_interpolation: Whether to use subsample interpolation.
         GS_normalisation: Whether to perform Grant-Schmidt orthogonalisaton to ensure (hj|hm) = 0 for j!=m.
-        comp_normalisation: Whether to normalise s_1,...,s_n components to ensure (sj|sj) is constant.
-        comp_phase: Initial phase of s_1,...,s_n components.
+        comp_normalisation: Whether to normalise x_0,...,x_n-1 components to ensure (sj|sj) is constant.
+        comp_phase: Initial phase of x_0,...,x_n-1 components.
         return_ovlps: Whether to return overlaps between all unorthogonalised harmonics.
         
     Returns:
-        All waveform components and combinations: h, h1, ..., h_n, s_1, ..., s_n
+        All waveform components and combinations: total, *harmonics, *components
     """
 
     # Other approximants are deprecated
