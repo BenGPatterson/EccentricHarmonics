@@ -9,35 +9,6 @@ from pycbc.noise import frequency_noise_from_psd
 from calcwf import chirp2total, chirp_degeneracy_line, gen_wf, shifted_f, shifted_e, gen_psd, resize_wfs, get_h
 from simple_pe.waveforms import calculate_mode_snr, network_mode_snr
 
-def estimate_coeffs(rhos, ovlps, ovlps_perp):
-    """
-    Estimate coefficients of harmonics in data from match filter SNR and overlaps
-    between harmonics.
-
-    Parameters:
-        rhos: Match filter SNR of each harmonic.
-        ovlps: Overlaps of unorthogonalised harmonics.
-        ovlps_perp: Overlaps of orthogonalised harmonics with themselves.
-
-    Returns:
-        est_coeffs: Coefficient estimates.
-    """  
-    n = len(rhos)
-    adjust = {}
-    est_coeffs = {}
-    for i in range(n-1, -1, -1):
-        adjust[i] = 0
-        for j in range(1,n-i):
-            for comb in itertools.combinations(np.arange(i+1,n), j):
-                comb = [i] + list(comb)
-                prod = est_coeffs[comb[-1]]
-                for k in range(1,len(comb)):
-                    prod *= ovlps[comb[k]][comb[k-1]]
-                adjust[i] += prod
-        est_coeffs[i] = np.conj(rhos[i])/ovlps_perp[i] - adjust[i]
-
-    return est_coeffs
-
 def comb_harm_consistent(abs_SNRs, ang_SNRs, harms=[0,1,-1]):
     """
     Combine match of higher harmonics in phase consistent way for 
@@ -74,56 +45,6 @@ def comb_harm_consistent(abs_SNRs, ang_SNRs, harms=[0,1,-1]):
     
     return higher_SNR/abs_SNRs[0]
 
-def find_min_max(data, extra_keys=['h1_h0', 'h-1_h0', 'h2_h0', 'h1_h-1_h0', 'h1_h-1_h0_pca'], ovlps=None):
-    """
-    Finds minimum and maximum match of various match quantities across varying mean anomaly.
-
-    Parameters:
-        data: Dictionary containing matches.
-        extra_keys: Extra match-related quantities to compute.
-        ovlps: Optionally use overlaps between harmonics to improve SNR estimate.
-
-    Returns:
-        data: Dictionary containing matches with min/max matches added.
-    """
-
-    # Loop over each chirp mass grid
-    for chirp in data.keys():
-
-        # Calculate extra keys if not already present
-        for key in extra_keys:
-            if key not in list(data[chirp].keys()):
-                if key == 'h1_h0':
-                    data[chirp]['h1_h0'] = data[chirp]['h1']/data[chirp]['h0']
-                elif key == 'h-1_h0':
-                    data[chirp]['h-1_h0'] = data[chirp]['h-1']/data[chirp]['h0']
-                elif key == 'h2_h0':
-                    data[chirp]['h2_h0'] = data[chirp]['h2']/data[chirp]['h0']
-                elif key == 'h1_h-1_h0':
-                    num = np.sqrt(data[chirp]['h1']**2+data[chirp]['h-1']**2)
-                    data[chirp]['h1_h-1_h0'] = num/data[chirp]['h0']
-                elif key == 'h1_h-1_h2_h0':
-                    num = np.sqrt(data[chirp]['h1']**2+data[chirp]['h-1']**2+data[chirp]['h2']**2)
-                    data[chirp]['h1_h-1_h2_h0'] = num/data[chirp]['h0']
-                elif key == 'h1_h-1_h0_pca':
-                    angle = 2*data[chirp]['h0_phase']-data[chirp]['h1_phase']-data[chirp]['h-1_phase']
-                    num = np.sqrt(data[chirp]['h1']**2+np.cos(angle)*data[chirp]['h-1']**2)
-                    data[chirp]['h1_h-1_h0_pca'] = num/data[chirp]['h0']
-                elif key == 'h1_h-1_h0_pcn':
-                    data[chirp]['h1_h-1_h0_pcn'] = comb_harm_consistent_grid(data[chirp], harms=[1,-1])
-                elif key == 'h1_h-1_h2_h0_pcn':
-                    data[chirp]['h1_h-1_h2_h0_pcn'] = comb_harm_consistent_grid(data[chirp], harms=[1,-1,2])
-                
-        # Calculate min and max of each key
-        for key in list(data[chirp].keys()):
-            
-            # Find min/max vals and add to grid
-            if key[0] == 'h' or key=='quad':
-                data[chirp][f'{key}_max'] = np.nanmax(np.array(data[chirp][key]), axis=1)
-                data[chirp][f'{key}_min'] = np.nanmin(np.array(data[chirp][key]), axis=1)
-
-    return data
-
 def create_min_max_interp(data, chirp, key):
     """
     Create interpolation objects which give the min and max ecc value for 
@@ -144,91 +65,6 @@ def create_min_max_interp(data, chirp, key):
 
     max_interp = interp1d(e_vals, max_match_arr, bounds_error=False)
     min_interp = interp1d(e_vals, min_match_arr, bounds_error=False)
-
-    return max_interp, min_interp
-
-def fid_e2zero_ecc_chirp(fid_e, scaling_norms=[10, 0.035]):
-    """
-    Convert a fiducial eccentricity to corresponding non-eccentric chirp
-    mass.
-
-    Parameters:
-        fid_e: Fiducial eccentricity.
-        scaling_norms: Non-eccentric chirp mass and fiducial eccentricity used 
-        to normalise relationship.
-
-    Returns:
-        zero_ecc_chirp: Non-eccentric chirp mass.
-    """
-    
-    zero_ecc_chirp = fid_e**(6/5)*scaling_norms[0]/(scaling_norms[1]**(6/5))
-    
-    return zero_ecc_chirp
-
-def zero_ecc_chirp2fid_e(zero_ecc_chirp, scaling_norms=[10, 0.035]):
-    """
-    Convert a non-eccentric chirp mass to a corresponding fiducial eccentricity.
-
-    Parameters:
-        zero_ecc_chirp: Non-eccentric chirp mass.
-        scaling_norms: Non-eccentric chirp mass and fiducial eccentricity used 
-        to normalise relationship.
-
-    Returns:
-        fid_e: Fiducial eccentricity.
-    """
-    
-    fid_e = zero_ecc_chirp**(5/6)*scaling_norms[1]/(scaling_norms[0]**(5/6))
-    
-    return fid_e
-
-def scaled_2D_interps(data, key):
-    """
-    Create interpolation objects which give the min and max match value at 
-    arbitrary chirp mass and point in parameter space on line of degeneracy.
-    These are normalised to account for different fiducial eccentricities.
-
-    Parameters:
-        data: Dictionary containing matches.
-        key: Key of dictionary (e.g. h1_h0) to calculate interpolation object for.
-
-    Returns:
-        max_interp, min_interp: Created interpolation objects.
-    """
-
-    max_vals_arr = []
-    min_vals_arr = []
-    ecc_vals_arr = []
-    fid_e_vals_arr = []
-
-    common_e_vals = np.arange(0, 1, 0.001)
-    
-    # Loop over each chirp mass grid to get all max/min match values
-    for chirp in data.keys():
-
-        # Interpolate to standard e_val array
-        max_interp = interp1d(data[chirp]['e_vals'], data[chirp][f'{key}_max'], bounds_error=False)
-        min_interp = interp1d(data[chirp]['e_vals'], data[chirp][f'{key}_min'], bounds_error=False)
-        max_vals = max_interp(common_e_vals)
-        min_vals = min_interp(common_e_vals)
-        non_nan_inds = np.array(1 - np.isnan(max_vals+min_vals), dtype='bool')
-        
-        # Normalise in both directions
-        fid_e = data[chirp]['fid_params']['e']
-        ecc_vals = common_e_vals/fid_e
-        max_vals = max_vals/chirp
-        min_vals = min_vals/chirp
-        
-        # Add non-nan vals to interpolation data points
-        max_vals_arr += list(max_vals[non_nan_inds])
-        min_vals_arr += list(min_vals[non_nan_inds])
-        ecc_vals_arr += list(ecc_vals[non_nan_inds])
-        fid_e_vals = [fid_e]*np.sum(non_nan_inds)
-        fid_e_vals_arr += fid_e_vals
-    
-    # Create max/min interpolation objects
-    max_interp = LinearNDInterpolator(list(zip(fid_e_vals_arr, ecc_vals_arr)), max_vals_arr)
-    min_interp = LinearNDInterpolator(list(zip(fid_e_vals_arr, ecc_vals_arr)), min_vals_arr)
 
     return max_interp, min_interp
 

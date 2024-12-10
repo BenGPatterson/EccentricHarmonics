@@ -1,0 +1,6 @@
+lal.MSUN_SI != Msun
+__name__ = gwsurrogate.new.spline_evaluation
+__package__= gwsurrogate.new
+Non-eccentric chirp mass: 10.066527072731718, fiducial eccentricity: 0.03519393: Completed in 2692.243253469467 seconds.
+Non-eccentric chirp mass: 24.16193794269227, fiducial eccentricity: 0.07300364: Completed in 829.4045305252075 seconds.
+Non-eccentric chirp mass: 40.27667198778691, fiducial eccentricity: 0.11175819: Completed in 479.5783567428589 seconds.

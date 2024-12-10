@@ -1,0 +1,6 @@
+lal.MSUN_SI != Msun
+__name__ = gwsurrogate.new.spline_evaluation
+__package__= gwsurrogate.new
+Varying eccentricity: Completed in 555.3407373428345 seconds.
+Varying chirp mass: Completed in 878.6146755218506 seconds.
+Varying mass ratio: Completed in 612.5220057964325 seconds.

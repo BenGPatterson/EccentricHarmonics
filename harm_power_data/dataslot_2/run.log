@@ -1,0 +1,54 @@
+000 (20764470.000.000) 2024-09-20 07:28:23 Job submitted from host: <10.14.0.121:9618?addrs=10.14.0.121-9618+[fde1-53ba-e9a0-de11-c925-65-8543-e173]-9618&alias=ldas-pcdev12.ligo.caltech.edu&noUDP&sock=schedd_7741_42b7>
+...
+001 (20764470.000.000) 2024-09-20 07:28:43 Job executing on host: <10.14.10.27:9618?addrs=10.14.10.27-9618&alias=node2277.cluster.ldas.cit&noUDP&sock=startd_8493_11ef>
+	SlotName: slot1_3@node2277.cluster.ldas.cit
+	CondorScratchDir = "/local/condor/execute/dir_677565"
+	Cpus = 16
+	Disk = 1049600
+	GPUs = 0
+	Memory = 16384
+...
+006 (20764470.000.000) 2024-09-20 07:28:52 Image size of job updated: 1330304
+	1299  -  MemoryUsage of job (MB)
+	1330152  -  ResidentSetSize of job (KB)
+...
+006 (20764470.000.000) 2024-09-20 07:33:53 Image size of job updated: 2584044
+	2412  -  MemoryUsage of job (MB)
+	2469680  -  ResidentSetSize of job (KB)
+...
+006 (20764470.000.000) 2024-09-20 07:38:53 Image size of job updated: 3299780
+	3090  -  MemoryUsage of job (MB)
+	3163552  -  ResidentSetSize of job (KB)
+...
+006 (20764470.000.000) 2024-09-20 07:43:53 Image size of job updated: 3806892
+	3179  -  MemoryUsage of job (MB)
+	3254632  -  ResidentSetSize of job (KB)
+...
+006 (20764470.000.000) 2024-09-20 07:48:54 Image size of job updated: 3806892
+	3304  -  MemoryUsage of job (MB)
+	3382596  -  ResidentSetSize of job (KB)
+...
+006 (20764470.000.000) 2024-09-20 07:53:54 Image size of job updated: 3806892
+	3307  -  MemoryUsage of job (MB)
+	3386104  -  ResidentSetSize of job (KB)
+...
+005 (20764470.000.000) 2024-09-20 08:02:56 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 1 00:27:52, Sys 0 01:25:30  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 1 00:27:52, Sys 0 01:25:30  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :    48.65       16        16 
+	   Disk (KB)            : 17500     1048576   1049600 
+	   GPUs                 :                           0 
+	   Memory (MB)          :  3307       16384     16384 
+	   TimeExecute (s)      :  2053                       
+	   TimeSlotBusy (s)     :  2053                       
+
+	Job terminated of its own accord at 2024-09-20T15:02:56Z with exit-code 0.
+...

@@ -1,0 +1,15 @@
+executable = /home/ben.patterson/.conda/envs/igwn_eccentric/bin/python
+arguments = -u gen_harm_power.py
+
+log = run.log
+error = run.err
+output = run.out
+
+request_cpus = 16
+request_disk = 1GB
+request_memory = 16GB
+
+accounting_group = ligo.dev.o4.cbc.pe.lalinference
+accounting_group_user = ben.patterson
+
+queue

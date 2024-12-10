@@ -1,52 +1,19 @@
-import EOBRun_module
-import numpy as np
 import math
-import scipy.constants as const
+import numpy as np
+import matplotlib.pyplot as plt
+import EOBRun_module
 import astropy.constants as aconst
+import scipy.constants as const
+from scipy.optimize import minimize
+from scipy.interpolate import interp1d
 from pycbc.waveform import td_approximants, fd_approximants, get_td_waveform, get_fd_waveform, taper_timeseries
 from pycbc.detector import Detector
 from pycbc.filter import match, optimized_match, overlap_cplx, sigma, sigmasq
 from pycbc.psd import aLIGOZeroDetHighPower
 from pycbc.types import timeseries, frequencyseries
-from scipy.optimize import minimize
-from scipy.interpolate import interp1d
-import matplotlib.pyplot as plt
+from bilby.gw.conversion import chirp_mass_and_mass_ratio_to_total_mass, total_mass_and_mass_ratio_to_component_masses, component_masses_to_chirp_mass
 
 ## Conversions
-
-def f_kep2avg(f_kep, e):
-    """
-    Converts Keplerian frequency to the average frequency quantity used by TEOBResumS.
-
-    Parameters:
-        f_kep: Keplerian frequency to be converted.
-        e: eccentricity of signal.
-
-    Returns:
-        Average frequency.
-    """
-
-    numerator = (1+e**2)
-    denominator = (1-e**2)**(3/2)
-
-    return f_kep*(numerator/denominator)
-
-def f_avg2kep(f_avg, e):
-    """
-    Converts average frequency quantity used by TEOBResumS to Keplerian frequency.
-
-    Parameters:
-        f_kep: Average frequency to be converted.
-        e: eccentricity of signal.
-
-    Returns:
-        Keplerian frequency.
-    """
-
-    numerator = (1-e**2)**(3/2)
-    denominator = (1+e**2)
-
-    return f_avg*(numerator/denominator)
 
 def chirp2total(chirp, q):
     """
@@ -54,16 +21,12 @@ def chirp2total(chirp, q):
 
     Parameters:
         chirp: Chirp mass.
-        q: Mass ratio.
+        q: Mass ratio (m1/m2).
 
     Returns:
         Total mass.
     """
-    
-    q_factor = q/(1+q)**2
-    total = q_factor**(-3/5) * chirp
-
-    return total
+    return chirp_mass_and_mass_ratio_to_total_mass(chirp, 1/q)
 
 def total2chirp(total, q):
     """
@@ -71,16 +34,13 @@ def total2chirp(total, q):
 
     Parameters:
         total: Total mass.
-        q: Mass ratio.
+        q: Mass ratio (m1/m2).
 
     Returns:
         Chirp mass.
     """
     
-    q_factor = q/(1+q)**2
-    chirp = q_factor**(3/5) * total
-
-    return chirp
+    return component_masses_to_chirp_mass(*total_mass_and_mass_ratio_to_component_masses(1/q, total))
 
 def chirp_degeneracy_line(zero_ecc_chirp, ecc, sample_rate=4096, f_low=10, q=2, f_match=20, return_delta_m=False):
     """
@@ -165,35 +125,6 @@ def chirp_degeneracy_line(zero_ecc_chirp, ecc, sample_rate=4096, f_low=10, q=2, 
 
 ## Generating waveform
 
-def gen_e_td_wf(f_low, e, M, q, sample_rate, phase, distance):
-    """
-    Generates EccentricTD waveform with chosen parameters.
-
-    Parameters:
-        f_low: Starting frequency.
-        e: Eccentricity.
-        M: Total mass.
-        q: Mass ratio.
-        sample_rate: Sampling rate of waveform to be generated.
-        phase: Phase of signal.
-        distance: Luminosity distance to binary in Mpc.
-
-    Returns:
-        Plus and cross polarisation of EccentricTD waveform.
-    """
-    
-    m2 = M / (1+q)
-    m1 = M - m2
-    e_td_p, e_td_c = get_td_waveform(approximant='EccentricTD',
-                                     mass1=m1,
-                                     mass2=m2,
-                                     eccentricity=e,
-                                     coa_phase=phase,
-                                     distance=distance,
-                                     delta_t=1.0/sample_rate,
-                                     f_lower=f_low)
-    return e_td_p, e_td_c
-
 def modes_to_k(modes):
     """
     Converts list of modes to use into the 'k' parameter accepted by TEOBResumS.
@@ -207,7 +138,7 @@ def modes_to_k(modes):
     
     return [int(x[0]*(x[0]-1)/2 + x[1]-2) for x in modes]
 
-def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_type, mode_list):
+def gen_teob_wf(f, e, M, q, chi1, chi2, sample_rate, phase, distance, TA, inclination, mode_list):
     """
     Generates TEOBResumS waveform with chosen parameters.
 
@@ -216,48 +147,39 @@ def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_
         e: Eccentricity.
         M: Total mass.
         q: Mass ratio.
+        chi1: Aligned spin of primary.
+        chi2: Aligned spin of secondary.
         sample_rate: Sampling rate of waveform to be generated.
         phase: Phase of signal.
         distance: Luminosity distance to binary in Mpc.
         TA: Initial true anomaly.
         inclination: Inclination.
-        freq_type: How the frequency has been specified.
         mode_list: Modes to include.
 
     Returns:
         Plus and cross polarisation of TEOBResumS waveform.
     """
 
-    # Gets appropriate frequency quantity
-    if freq_type == 'average':
-        f_avg = f_kep2avg(f, e)
-        freq_type_id = 1
-    elif freq_type == 'orbitaveraged':
-        f_avg = f
-        freq_type_id = 3
-    else:
-        raise Exception('freq_type not recognised')
-
     # Define parameters
     k = modes_to_k(mode_list)
     pars = {
             'M'                  : M,
             'q'                  : q,    
-            'chi1'               : 0,
-            'chi2'               : 0,
+            'chi1'               : chi1,
+            'chi2'               : chi2,
             'domain'             : 0,            # TD
             'arg_out'            : 'no',         # Output hlm/hflm. Default = 0
             'use_mode_lm'        : k,            # List of modes to use/output through EOBRunPy
             'srate_interp'       : sample_rate,  # srate at which to interpolate. Default = 4096.
             'use_geometric_units': 'no',         # Output quantities in geometric units. Default = 1
-            'initial_frequency'  : f_avg,        # in Hz if use_geometric_units = 0, else in geometric units
+            'initial_frequency'  : f,        # in Hz if use_geometric_units = 0, else in geometric units
             'interp_uniform_grid': 'yes',        # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
             'distance'           : distance,
             'coalescence_angle'  : phase,
             'inclination'        : 0,
             'ecc'                : e,
             'output_hpc'         : 'no',
-            'ecc_freq'           : freq_type_id,
+            'ecc_freq'           : 3,
             'anomaly'            : TA,
             'inclination'        : inclination
             }
@@ -272,7 +194,7 @@ def gen_teob_wf(f, e, M, q, sample_rate, phase, distance, TA, inclination, freq_
     
     return teob_p, teob_c
 
-def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.pi, inclination=0, freq_type='average', mode_list=[[2,2]]):
+def gen_wf(f_low, e, M, q, sample_rate, approximant, chi1=0, chi2=0, phase=0, distance=1, TA=np.pi, inclination=0, mode_list=[[2,2]]):
     """
     Generates waveform with chosen parameters.
 
@@ -283,22 +205,21 @@ def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.
         q: Mass ratio.
         sample_rate: Sampling rate of waveform to be generated.
         approximant: Approximant to use to generate the waveform.
+        chi1: Aligned spin of primary.
+        chi2: Aligned spin of secondary.
         phase: Phase of signal.
         distance: Luminosity distance to binary in Mpc.
-        TA: Initial true anomaly (TEOBResumS only).
-        inclination: Inclination (TEOBResumS only).
-        freq_type: How the frequency has been specified (TEOBResumS only).
-        mode_list: Modes to include (TEOBResumS only).
+        TA: Initial true anomaly.
+        inclination: Inclination.
+        mode_list: Modes to include.
 
     Returns:
         Complex combination of plus and cross waveform polarisations.
     """
 
     # Chooses specified approximant
-    if approximant=='EccentricTD':
-        hp, hc = gen_e_td_wf(f_low, e, M, q, sample_rate, phase, distance)
-    elif approximant=='TEOBResumS':
-        hp, hc = gen_teob_wf(f_low, e, M, q, sample_rate, phase, distance, TA, inclination, freq_type, mode_list)
+    if approximant=='TEOBResumS':
+        hp, hc = gen_teob_wf(f_low, e, M, q, chi1, chi2, sample_rate, phase, distance, TA, inclination, mode_list)
     else:
         raise Exception('approximant not recognised')
 
@@ -306,22 +227,6 @@ def gen_wf(f_low, e, M, q, sample_rate, approximant, phase=0, distance=1, TA=np.
     return hp - 1j*hc
 
 ## Varying mean anomaly
-
-def m1_m2_from_M_q(M, q):
-    """
-    Calculates component masses from total mass and mass ratio.
-
-    Parameters:
-        M: Total mass.
-        q: Mass ratio.
-
-    Returns:
-        Masses of binary components.
-    """
-    
-    m2 = M/(1+q)
-    m1 = M - m2
-    return m1, m2
 
 def P_from_f(f):
     """
@@ -401,7 +306,7 @@ def delta_freq_orbit(P, e, M, q):
         Frequency shift per orbit.
     """
     
-    m1, m2 = m1_m2_from_M_q(M, q)
+    m1, m2 = total_mass_and_mass_ratio_to_component_masses(1/q, M)
     numerator = 2*192*np.pi*(2*np.pi*const.G)**(5/3)*m1*m2*(1+(73/24)*e**2+(37/96)*e**4)
     denominator = 5*const.c**5*P**(8/3)*(m1+m2)**(1/3)*(1-e**2)**(7/2)
     return numerator/denominator
@@ -670,29 +575,7 @@ def match_hn(wf_hjs_, wf_s, f_low, f_match=20, return_index=False, psd=None):
     if return_index:
         return *matches, m_index
     else:
-        return matches
-
-def match_h1_h2(wf_h1, wf_h2, wf_s, f_low, f_match=20, return_index=False):
-    """
-    Calculates match between dominant waveform and a trial waveform, and uses the time shift 
-    in this match to compute the complex overlap between the time-shifted sub-leading waveform 
-    and a trial waveform. This ensures the 'match' is calculated for both harmonics at the same 
-    time. This has been superseded by match_hn().
-
-    Parameters:
-        wf_h1: Fiducial h1 waveform.
-        wf_h2: Fiducial h2 waveform.
-        wf_s: Trial waveform
-        f_low: Starting frequency of waveforms.
-        f_match: Low frequency cutoff to use.
-        return_index: Whether to return index shift of h1 match.
-        
-    Returns:
-        Complex matches of trial waveform to h1 and h2 respectively.
-    """
-
-    return match_hn([wf_h1, wf_h2], wf_s, f_low, f_match=f_match, return_index=return_index)
-    
+        return matches    
 
 def match_wfs(wf1, wf2, f_low, subsample_interpolation, f_match=20, return_phase=False):
     """
@@ -761,36 +644,6 @@ def overlap_cplx_wfs(wf1, wf2, f_low, f_match=20, normalized=True):
 
     # Perform complex overlap
     m = overlap_cplx(wf1.real(), wf2.real(), psd=psd, low_frequency_cutoff=f_match, normalized=normalized)
-
-    return m
-
-def minimise_match(s_f, f_low, e, M, q, h_fid, sample_rate, approximant, subsample_interpolation):
-    """
-    Calculates match to fiducial waveform for a given shifted frequency.
-
-    Parameters:
-        s_f: Shifted frequency.
-        f_low: Original starting frequency.
-        e: Eccentricity.
-        M: Total mass.
-        q: Mass ratio.
-        h_fid: Fiducial waveform.
-        sample_rate: Sample rate of waveform.
-        approximant: Approximant to use.
-        subsample_interpolation: Whether to use subsample interpolation.
-        
-    Returns:
-        Match of waveforms.
-    """
-
-    # Calculate shifted eccentricity
-    s_e = shifted_e(s_f[0], f_low, e)
-
-    # Calculate trial waveform
-    trial_wf = gen_wf(s_f[0], s_e, M, q, sample_rate, approximant)
-
-    # Calculate match
-    m = match_wfs(trial_wf, h_fid, s_f[0], subsample_interpolation)
 
     return m
 
