@@ -1,7 +1,0 @@
-pgf.texsystem: pdflatex
-font.family: serif
-font.serif: Computer Modern Roman
-axes.titlesize: medium
-figure.titlesize: medium
-text.usetex: True
-pgf.rcfonts: False
