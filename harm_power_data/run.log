@@ -1,0 +1,46 @@
+000 (3651615.000.000) 2024-12-10 09:18:03 Job submitted from host: <10.14.0.65:9618?addrs=10.14.0.65-9618&alias=jupyter4.ligo.caltech.edu&noUDP&sock=schedd_3355_d454>
+...
+001 (3651615.000.000) 2024-12-10 09:18:17 Job executing on host: <10.14.10.98:9618?addrs=10.14.10.98-9618&alias=node2348.cluster.ldas.cit&noUDP&sock=startd_3839_d02b>
+	SlotName: slot1_1@node2348.cluster.ldas.cit
+	CondorScratchDir = "/var/lib/condor/execute/dir_1648944"
+	Cpus = 16
+	Disk = 1049600
+	GPUs = 0
+	Memory = 16384
+...
+006 (3651615.000.000) 2024-12-10 09:18:26 Image size of job updated: 1706744
+	1667  -  MemoryUsage of job (MB)
+	1706744  -  ResidentSetSize of job (KB)
+...
+006 (3651615.000.000) 2024-12-10 09:23:28 Image size of job updated: 2853280
+	2787  -  MemoryUsage of job (MB)
+	2853280  -  ResidentSetSize of job (KB)
+...
+006 (3651615.000.000) 2024-12-10 09:28:28 Image size of job updated: 3605328
+	3521  -  MemoryUsage of job (MB)
+	3605328  -  ResidentSetSize of job (KB)
+...
+006 (3651615.000.000) 2024-12-10 09:33:28 Image size of job updated: 3605328
+	3523  -  MemoryUsage of job (MB)
+	3606876  -  ResidentSetSize of job (KB)
+...
+005 (3651615.000.000) 2024-12-10 09:45:02 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 1 00:10:00, Sys 0 01:37:10  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 1 00:10:00, Sys 0 01:37:10  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :    56.66       16        16 
+	   Disk (KB)            : 17500     1048576   1049600 
+	   GPUs                 :                           0 
+	   Memory (MB)          :  3523       16384     16384 
+	   TimeExecute (s)      :  1605                       
+	   TimeSlotBusy (s)     :  1605                       
+
+	Job terminated of its own accord at 2024-12-10T17:45:02Z with exit-code 0.
+...
