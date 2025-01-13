@@ -63,8 +63,8 @@ def create_min_max_interp(data, chirp, key):
     min_match_arr = data[chirp][f'{key}_min']
     e_vals = data[chirp]['e_vals']
 
-    max_interp = interp1d(e_vals, max_match_arr, bounds_error=False)
-    min_interp = interp1d(e_vals, min_match_arr, bounds_error=False)
+    max_interp = interp1d(e_vals, np.real(max_match_arr), bounds_error=False)
+    min_interp = interp1d(e_vals, np.real(min_match_arr), bounds_error=False)
 
     return max_interp, min_interp
 
