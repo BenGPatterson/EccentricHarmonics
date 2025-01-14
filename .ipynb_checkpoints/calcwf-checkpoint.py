@@ -15,6 +15,23 @@ from bilby.gw.conversion import chirp_mass_and_mass_ratio_to_total_mass, total_m
 
 ## Conversions
 
+def f_kep2avg(f_kep, e):
+    """
+    Converts Keplerian frequency to the average frequency quantity used by TEOBResumS.
+
+    Parameters:
+        f_kep: Keplerian frequency to be converted.
+        e: eccentricity of signal.
+
+    Returns:
+        Average frequency.
+    """
+
+    numerator = (1+e**2)
+    denominator = (1-e**2)**(3/2)
+
+    return f_kep*(numerator/denominator)
+
 def chirp2total(chirp, q):
     """
     Converts chirp mass to total mass.
@@ -167,19 +184,19 @@ def gen_teob_wf(f, e, M, q, chi1, chi2, sample_rate, phase, distance, TA, inclin
             'q'                  : q,    
             'chi1'               : chi1,
             'chi2'               : chi2,
-            'domain'             : 0,            # TD
-            'arg_out'            : 'no',         # Output hlm/hflm. Default = 0
-            'use_mode_lm'        : k,            # List of modes to use/output through EOBRunPy
-            'srate_interp'       : sample_rate,  # srate at which to interpolate. Default = 4096.
-            'use_geometric_units': 'no',         # Output quantities in geometric units. Default = 1
-            'initial_frequency'  : f,        # in Hz if use_geometric_units = 0, else in geometric units
-            'interp_uniform_grid': 'yes',        # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+            'domain'             : 0,               # TD
+            'arg_out'            : 'no',            # Output hlm/hflm. Default = 0
+            'use_mode_lm'        : k,               # List of modes to use/output through EOBRunPy
+            'srate_interp'       : sample_rate,     # srate at which to interpolate. Default = 4096.
+            'use_geometric_units': 'no',            # Output quantities in geometric units. Default = 1
+            'initial_frequency'  : f_kep2avg(f, e), # in Hz if use_geometric_units = 0, else in geometric units
+            'interp_uniform_grid': 'yes',           # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
             'distance'           : distance,
             'coalescence_angle'  : phase,
             'inclination'        : 0,
             'ecc'                : e,
             'output_hpc'         : 'no',
-            'ecc_freq'           : 3,
+            'ecc_freq'           : 1,
             'anomaly'            : TA,
             'inclination'        : inclination
             }
