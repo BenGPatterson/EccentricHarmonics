@@ -81,19 +81,19 @@ def chirp_match_MA_grid_data(param_vals, MA_vals, n, n_gen, fid_e, zero_ecc_chir
     for i in range(n):
         matches[f'h{harm_ids[i]}'] = np.abs(match_arr[:,i].reshape(-1, len(MA_vals)))
         matches[f'h{harm_ids[i]}_phase'] = np.angle(match_arr[:,i].reshape(-1, len(MA_vals)))
-    matches['quad'] = match_arr[:,n].reshape(-1, len(MA_vals))
+    matches['quad'] = np.abs(match_arr[:,n].reshape(-1, len(MA_vals)))
     count = n+1
     for i in range(1,n):
-        matches[f'h{harm_ids[i]}_h0'] = match_arr[:,count].reshape(-1, len(MA_vals))
+        matches[f'h{harm_ids[i]}_h0'] = np.abs(match_arr[:,count].reshape(-1, len(MA_vals)))
         count += 1
         if i > 1:
             str_combo = ''
             for j in range(1, i+1):
                 str_combo += f'h{harm_ids[j]}_'
-            matches[f'{str_combo}h0'] = match_arr[:,count].reshape(-1, len(MA_vals))
+            matches[f'{str_combo}h0'] = np.abs(match_arr[:,count].reshape(-1, len(MA_vals)))
             count += 1
             if i == 2:
-                matches[f'{str_combo}h0_pc'] = match_arr[:,count].reshape(-1, len(MA_vals))
+                matches[f'{str_combo}h0_pc'] = np.abs(match_arr[:,count].reshape(-1, len(MA_vals)))
                 count += 1
 
     # Add parameter keys

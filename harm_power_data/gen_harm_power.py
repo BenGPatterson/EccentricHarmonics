@@ -109,10 +109,10 @@ def grid_data(vary_param, param_vals, MA_vals, n, n_gen, e, chirp, q, f_low, f_m
     for i in range(n):
         matches[f'h{harm_ids[i]}'] = np.abs(match_arr[:,i].reshape(-1, len(MA_vals)))
         matches[f'h{harm_ids[i]}_phase'] = np.angle(match_arr[:,i].reshape(-1, len(MA_vals)))
-    matches['h1_h-1'] = match_arr[:,n].reshape(-1, len(MA_vals))
-    matches['h1_h-1_pc'] = match_arr[:,n+1].reshape(-1, len(MA_vals))
-    matches['total_SNR'] = match_arr[:,n+2].reshape(-1, len(MA_vals))
-    matches['ortho_SNR'] = match_arr[:,n+3].reshape(-1, len(MA_vals))
+    matches['h1_h-1'] = np.abs(match_arr[:,n].reshape(-1, len(MA_vals)))
+    matches['h1_h-1_pc'] = np.abs(match_arr[:,n+1].reshape(-1, len(MA_vals)))
+    matches['total_SNR'] = np.abs(match_arr[:,n+2].reshape(-1, len(MA_vals)))
+    matches['ortho_SNR'] = np.abs(match_arr[:,n+3].reshape(-1, len(MA_vals)))
 
     # Add parameter keys
     matches['params'] = {}
